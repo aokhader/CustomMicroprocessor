@@ -1,0 +1,459 @@
+    ldi 0
+    xor r0, r0
+    mov r1, r0
+    ldm r1          ; r0 = MEM[0] = A
+    mov r6, r0      ; M = A
+
+    ldi 0           ; 0x01
+    mov r1, r0
+    ldm r1          ; r0 = MEM[1] = B
+    mov r5, r0      ; Q = B
+
+    ldi 0
+    xor r0, r0
+    mov r4, r0      ; A = 0
+
+    ldi 0
+    xor r0, r0
+    mov r7, r0      ; Q_1 = 0
+
+    ldi 1           ; 0x08
+    mov r2, r0      ; n = 8
+
+    ; if r6 != 0x80, goto mul2_loop_start
+    mov r1, r6
+    ldi 3           ; r0 = 0x80
+    xor r1, r0      ; r1 = r6 ^ 0x80
+    mov r0, r1
+    bnz 12          ; not -128 -> jump to mul2_loop_start
+
+    ; else swap r6 and r5
+    mov r1, r6
+    mov r6, r5
+    mov r5, r1
+    br 12           ; mul1_loop_start
+
+
+mul1_loop_start:
+    mov r1, r5
+    ldi 0           ; 0x01
+    and r1, r0      ; r1 = Q_0
+    mov r0, r1
+    xor r0, r7
+    bnz 4           ; mul1_check_diff
+    br 7            ; mul1_after_condition
+
+mul1_check_diff:
+    mov r0, r1
+    bnz 5           ; mul1_do_sub
+    br 6            ; mul1_do_add
+
+mul1_do_sub:
+    mov r3, r6
+    ldi 2           ; 0xFF
+    xor r3, r0
+    ldi 0           ; 0x01
+    add r3, r0      ; r1 = -M
+    mov r0, r4
+    add r0, r3
+    mov r4, r0
+    br 7            ; mul1_after_condition
+
+mul1_do_add:
+    mov r0, r4
+    add r0, r6
+    mov r4, r0
+    br 7            ; mul1_after_condition
+
+mul1_after_condition:
+    mov r1, r5
+    ldi 0           ; 0x01
+    and r1, r0
+    mov r7, r1      ; Q_1 = Q_0
+
+    mov r1, r4
+    ldi 0           ; 0x01
+    and r1, r0
+    mov r0, r1
+    bnz 8           ; mul1_set_Q_msb
+
+    lsr r5, 1
+    br 9            ; mul1_shift_A
+
+mul1_set_Q_msb:
+    lsr r5, 1
+    ldi 3           ; 0x80
+    add r5, r0
+    br 9            ; mul1_shift_A
+
+mul1_shift_A:
+    mov r1, r4
+    ldi 3           ; 0x80
+    and r1, r0
+    lsr r4, 1
+    mov r0, r1
+    bnz 10          ; mul1_set_A_msb
+    br 11           ; mul1_decrement_loop
+
+mul1_set_A_msb:
+    ldi 3           ; 0x80
+    add r4, r0
+    br 11           ; mul1_decrement_loop
+
+mul1_decrement_loop:
+    ldi 2           ; 0xFF
+    add r2, r0
+    mov r0, r2
+    bnz 12          ; mul1_loop_start
+
+
+    mov r0, r4
+    str r0, 7       ; MEM[7] = AB_high
+
+    mov r0, r5
+    str r0, 8       ; MEM[8] = AB_low
+
+
+
+    ; AB_high * C
+    ldi 1
+    mov r1, r0
+    ldi 2
+    add r1, r0
+    ldm r1          ; r0 = MEM[7] = AB_high
+    mov r6, r0      
+
+    ldi 0           ; 0x01
+    add r0, r0
+    mov r1, r0
+    ldm r1          ; r0 = MEM[2] = C
+    mov r5, r0      ; Q = C
+
+    ldi 0
+    xor r0, r0
+    mov r4, r0      ; A_acc = 0
+
+    ldi 0
+    xor r0, r0
+    mov r7, r0      ; Q_1 = 0
+
+    ldi 1           ; 0x08
+    mov r2, r0      ; n = 8
+
+    ; if r6 != 0x80, goto mul2_loop_start
+    mov r1, r6
+    ldi 3           ; r0 = 0x80
+    xor r1, r0      ; r1 = r6 ^ 0x80
+    mov r0, r1
+    bnz 21          
+
+    ; else swap r6 and r5
+    mov r1, r6
+    mov r6, r5
+    mov r5, r1
+
+    br 21           ; mul2_loop_start   
+
+
+mul2_loop_start:
+    mov r1, r5
+    ldi 0           ; 0x01
+    and r1, r0      ; r1 = Q0
+    mov r0, r1
+    xor r0, r7
+    bnz 13           ; mul1_check_diff
+    br 16            ; mul1_after_condition
+
+mul2_check_diff:
+    mov r0, r1
+    bnz 14           ; mul1_do_sub
+    br 15            ; mul1_do_add
+
+mul2_do_sub:
+    mov r1, r6
+    ldi 2           ; 0xFF
+    xor r1, r0
+    ldi 0           ; 0x01
+    add r1, r0      ; r1 = -M
+    mov r0, r4
+    add r0, r1
+    mov r4, r0
+    br 16            ; mul1_after_condition
+
+mul2_do_add:
+    mov r0, r4
+    add r0, r6
+    mov r4, r0
+    br 16            ; mul1_after_condition
+
+mul2_after_condition:
+    mov r1, r5
+    ldi 0           ; 0x01
+    and r1, r0
+    mov r7, r1      ; Q_1 = Q_0
+
+    mov r1, r4
+    ldi 0           ; 0x01
+    and r1, r0
+    mov r0, r1
+    bnz 17           ; mul1_set_Q_msb
+
+    lsr r5, 1
+    br 18            ; mul1_shift_A
+
+mul2_set_Q_msb:
+    lsr r5, 1
+    ldi 3           ; 0x80
+    add r5, r0
+    br 18            ; mul1_shift_A
+
+mul2_shift_A:
+    mov r1, r4
+    ldi 3           ; 0x80
+    and r1, r0
+    lsr r4, 1
+    mov r0, r1
+    bnz 19          ; mul1_set_A_msb
+    br 20           ; mul1_decrement_loop
+
+mul2_set_A_msb:
+    ldi 3           ; 0x80
+    add r4, r0
+    br 20           ; mul1_decrement_loop
+
+mul2_decrement_loop:
+    ldi 2           ; 0xFF
+    add r2, r0
+    mov r0, r2
+    bnz 21          ; mul2_loop_start   
+
+
+    mov r0, r4
+    str r0, 9       ; MEM[9] = P1_high
+
+    mov r0, r5
+    str r0, 10      ; MEM[10] = P1_low
+
+
+
+
+    ; AB_low * C 
+    ldi 1
+    mov r1, r0
+    ldm r1
+    mov r5, r0      ; Q = AB_low
+    mov r3, r5      
+
+    ldi 0
+    add r0, r0
+    mov r1, r0
+    ldm r1
+    mov r6, r0      ; M = C
+
+    ldi 0
+    xor r0, r0
+    mov r4, r0      ; A = 0
+
+    ldi 0
+    xor r0, r0
+    mov r7, r0      ; Q_1 = 0
+
+    ldi 1           ; 0x08
+    mov r2, r0      ; n = 8
+
+    ; if r6 != 0x80, goto mul2_loop_start
+    mov r1, r6
+    ldi 3           ; r0 = 0x80
+    xor r1, r0      ; r1 = r6 ^ 0x80
+    mov r0, r1
+    bnz 30          
+
+    ; else swap r6 and r5
+    mov r1, r6
+    mov r6, r5
+    mov r5, r1
+    br 30           ; mul3_loop_start
+
+
+mul3_loop_start:
+    mov r1, r5
+    ldi 0           ; 0x01
+    and r1, r0      ; r1 = Q0
+    mov r0, r1
+    xor r0, r7
+    bnz 22           ; mul1_check_diff
+    br 25            ; mul1_after_condition
+
+mul3_check_diff:
+    mov r0, r1
+    bnz 23           ; mul1_do_sub
+    br 24            ; mul1_do_add
+
+mul3_do_sub:
+    mov r1, r6
+    ldi 2           ; 0xFF
+    xor r1, r0
+    ldi 0           ; 0x01
+    add r1, r0      ; r1 = -M
+    mov r0, r4
+    add r0, r1
+    mov r4, r0
+    br 25            ; mul1_after_condition
+
+mul3_do_add:
+    mov r0, r4
+    add r0, r6
+    mov r4, r0
+    br 25            ; mul1_after_condition
+
+mul3_after_condition:
+    mov r1, r5
+    ldi 0           ; 0x01
+    and r1, r0
+    mov r7, r1      ; Q_1 = Q0
+
+    mov r1, r4
+    ldi 0           ; 0x01
+    and r1, r0
+    mov r0, r1
+    bnz 26           ; mul1_set_Q_msb
+
+    lsr r5, 1
+    br 27            ; mul1_shift_A
+
+mul3_set_Q_msb:
+    lsr r5, 1
+    ldi 3           ; 0x80
+    add r5, r0
+    br 27            ; mul1_shift_A
+
+mul3_shift_A:
+    mov r1, r4
+    ldi 3           ; 0x80
+    and r1, r0
+    lsr r4, 1
+    mov r0, r1
+    bnz 28          ; mul1_set_A_msb
+    br 29           ; mul1_decrement_loop
+
+mul3_set_A_msb:
+    ldi 3           ; 0x80
+    add r4, r0
+    br 29           ; mul1_decrement_loop
+
+mul3_decrement_loop:
+    ldi 2           ; 0xFF
+    add r2, r0
+    mov r0, r2
+    bnz 30          ; mul1_loop_start
+    
+    ; 0xFF if (AB_low & 0x80), else 0
+    mov r1, r3
+    ldi 3
+    and r1, r0
+    lsr r1, 7
+    ldi 2
+    add r1, r0
+    ldi 2
+    xor r1, r0      ; r1 = 0xFF if msb = 1, else 0
+
+    ; P0_high += carry (0/1)
+    mov r0, r6
+    and r0, r1
+    add r4, r0
+
+    mov r0, r4
+    str r0, 11     ; MEM[11] = P0_high
+
+    mov r0, r5
+    str r0, 6      ; MEM[6] = P0_low
+
+    
+--- Combine Partial Products ---
+
+--- Formula ---
+
+; P = AB * C = (AB_high << 8) * C + AB_low * C 
+
+; AB_high * C = (P1_high << 8) + P1_low
+
+; AB_low * C = (P0_high << 8) + P0_low  
+
+; P = (((P1_high << 8) + P1_low) << 8) + (P0_high << 8) + P0_low
+;   = (P1_high << 16) + (P1_low << 8) + (P0_high << 8) + P0_low
+
+; P_low = P0_low
+; P_mid = P1_low + P0_high
+; P_high = P1_high + carry_mid + SignExt(P_mid)
+
+---------------
+
+    mov r0, r4
+    str r0, 11     ; MEM[11] = P0_high
+
+    mov r0, r5
+    str r0, 6      ; MEM[6] = P0_low
+
+    ldi 1           
+    mov r1, r0      
+    ldi 0           
+    add r1, r0      
+    ldm r1          
+    mov r2, r0      ; r2 = MEM[9] = P1_high
+
+    ldi 0           
+    add r1, r0      
+    ldm r1          
+    mov r3, r0      ; r3 = MEM[10] = P1_low
+ 
+    ldi 0          
+    add r1, r0    
+    ldm r1         
+    mov r4, r0     ; r4 = MEM[11] = P0_high
+
+    ; Sign Extend P0
+    mov r6, r4
+    ldi 3           ; 0x80
+    and r6, r0      
+    lsr r6, 7       ; r6 = P0_msb
+    ldi 2           ; 0xFF
+    add r6, r0      
+    ldi 2           ; 0xFF
+    xor r6, r0      ; r6 = 0x00 or 0xFF
+
+    ; P_mid = P0_high + P1_low
+    mov r0, r3
+    add r0, r4      
+    mov r5, r0      ; r5 = P_mid 
+    str r0, 5       ; MEM[5] = P_mid
+
+    
+    ; Carry = ((A & B) | ((A ^ B) & ~Sum)) >> 7
+     
+    mov r1, r3
+    and r1, r4      ; r1 = P0_high & P1_low
+    
+    ; P0_high | P1_low
+    mov r7, r3
+    xor r7, r4      
+    xor r7, r1      ; r7 =  (P0_high ^ P1_low) ^ (P0_high & P1_low)      
+
+    ldi 2           
+    xor r5, r0      ; r5 = ~P_mid      
+
+    and r7, r5      ; r7 = r7 & ~P_mid
+
+    ; r1 = carry
+    mov r0, r1
+    and r0, r7     
+    xor r1, r7     
+    xor r1, r0      
+    lsr r1, 7       
+
+    ; P_high = P1_high + carry + signext(P0)
+    mov r0, r2
+    add r0, r1
+    add r0, r6
+    str r0, 4       ; MEM[4] = P_high
+
+    br 31

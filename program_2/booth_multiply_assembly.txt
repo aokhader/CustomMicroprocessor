@@ -1,0 +1,112 @@
+    ldi 0       // 0
+    mov r1, r0
+    ldm r1
+    mov r6, r0  // M (Multiplicand)
+
+    ldi 1       // 0x1
+    mov r1, r0
+    ldm r1
+    mov r5, r0  // Q (Multiplier)
+
+    ldi 0       // 0
+    mov r4, r0  // A = 0      
+
+    ldi 0       // 0
+    mov r7, r0  // Q_1 = 0
+
+    ldi 2       // 0x08
+    mov r2, r0  // n = 8
+
+    br 10       // loop_start
+
+
+loop_start:
+    mov r1, r5
+    ldi 1       // 0x1
+    and r1, r0
+    mov r0, r1
+    xor r0, r7
+    bnz 11      // check_diff
+    br 14       // after_condition
+
+
+check_diff:
+    mov r0, r1
+    bnz 12      // do_sub
+    br 13       // do_add
+
+
+do_sub:
+    mov r3, r6
+    ldi 3       // 0xFF
+    xor r3, r0
+    ldi 1       // 0x1
+    add r3, r0
+    mov r0, r4
+    add r0, r3
+    mov r4, r0
+    br 14       // after_condition
+
+
+do_add:
+    mov r0, r4
+    add r0, r6
+    mov r4, r0
+    br 14       // after_condition
+
+
+after_condition:
+    mov r1, r5
+    ldi 1       // 0x1
+    and r1, r0
+    mov r7, r1
+
+    mov r1, r4
+    ldi 1       // 0x1
+    and r1, r0
+    mov r0, r1
+    bnz 15      // set_Q_msb
+
+    lsr r5, 1
+    br 16       // shift_A
+
+
+set_Q_msb:
+    lsr r5, 1
+    ldi 4       // 0x80
+    add r5, r0
+    br 16       // shift_A
+
+
+shift_A:
+    mov r1, r4
+    ldi 4       // 0x80
+    and r1, r0
+    lsr r4, 1
+    mov r0, r1
+    bnz 17      // set_A_msb
+    br 18       // decrement_loop
+
+
+set_A_msb:
+    ldi 4       // 0x80
+    add r4, r0
+    br 18       // decrement_loop
+
+
+decrement_loop:
+    ldi 3       // 0xFF
+    add r2, r0
+    mov r0, r2
+    bnz 10
+    br 19
+
+
+store_results:
+    mov r0, r4
+    str r0, 3
+
+    mov r0, r5
+    str r0, 2
+
+    br 20       // PC = 511 (halt condition)

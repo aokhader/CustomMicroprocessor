@@ -1,0 +1,121 @@
+################################################################################
+REMEMBER TO REPLACE THE BR/BNZ ARGS WITH THE LUT INDEX NUMBER 
+- One optimization is to remove the redundant moves e.g. r1 = r3 -> and r1, r4
+################################################################################
+
+# Initiailizations 
+ldi 0                   ; r0 = 0
+str r0, 17              ; arr[17] = max = 0 initially, so we can get a higher number later
+mov r6, r0              ; r6 = min = 0
+
+ldi 2                   ; r0 = 8
+str r0, 16              ; arr[16] = min = 8 initially, so we can get a lower number later
+mov r7, r0              ; r7 = max = 8
+
+ldi 0                   ; r0 = 0
+mov r2, r0              ; r2 = i = 0
+mov r3, r0              ; r3 = j = 0
+
+outer_loop:
+    ldi 3               ; r0 = 16
+    xor r0, r2          ; r0 = i ^ 16
+    bnz 11              ; if i != 16 then continue to outer_loop_cont
+    br 21               ; else we finished and stored the values, so return done flag
+
+outer_loop_cont:
+    mov r3, r2          ; r3 = j = i
+    ldi 1               ; r0 = 1
+    add r3, r0          ; j = i + 1
+
+inner_loop:
+    ldi 3               ; r0 = 16
+    xor r0, r3          ; r0 = j ^ 16
+    bnz 13              ; if j != 16 then continue to inner_loop_cont
+    br 20               ; else we finished with this i and we need to increment it 
+
+inner_loop_cont:
+    # Load the values from memory 
+    mov r1, r2          ; r1 = i
+    ldm r1              ; r0 = arr[i]
+    mov r4, r0          ; r4 = arr[i]
+
+    mov r1, r3          ; r1 = j
+    ldm r1              ; r0 = arr[j]
+    mov r5, r0          ; r5 = arr[j]
+
+    xor r5, r4          ; r5 = arr[i] ^ arr[j]
+    ldi 0               ; r0 = 0
+    mov r6, r0          ; r6 = distance = 0
+
+bit_loop:
+    # Find the Hamming distance i.e. count the bits
+    mov r1, r5          ; r1 = r5 = xor_result, to get LSB value and maintain result for LSR
+    ldi 1               ; r0 = 1
+    and r1, r0          ; r1 = xor_result & 1 to get the LSB
+
+    add r6, r1          ; r6 = distance + r1
+    lsr r5, 1           ; r5 = xor_result >> 1
+    
+    mov r0, r5          ; r0 = r5, if r5 == 0, then there are no more bits to count
+    bnz 14
+    br 15               ; else we counted all the bits, so we update the result if needed
+
+compare_min:
+    # Compare current distance (r5 == r6) with stored min distance (r7)
+    ldi 3               ; r0 = 16
+    ldm r0              ; r0 = arr[16] = min distance so far
+    mov r7, r0          ; r7 = min distance so far
+
+    # r6 - r7 >> 7 == 1 means r6 < r7
+    mov r5, r6          ; r5 = current distance, copied for safekeeping
+    ldi 5               ; r0 = 0xFF 
+    xor r7, r0          ; r7 = -(min distance so far) -- step 1 of two's complement
+    ldi 1               ; r0 = 1
+    add r7, r0          ; r7 = two's comp of min distance so far
+
+    add r6, r7          ; r6 = r6 - r7
+    lsr r6, 7           ; r6 >> 7 to get the MSB of the result
+    mov r0, r6          ; if the MSB == 1, then r6 < min so far, so update it
+    bnz 16              ; update the min value
+    br 17               ; else check for max
+
+update_min:
+    mov r0, r5          ; r0 = current distance
+    str r0, 16          ; arr[16] = current distance = new min distance
+
+compare_max:
+    ldi 4               ; r0 = 17
+    ldm r0              ; r0 = arr[17]
+    mov r7, r0          ; r7 = max distance so far
+
+    # r7 - r6 >> 7 == 1 means r6 > r7
+    mov r6, r5          ; r6 = current distance, copied for safekeeping
+    ldi 5               ; r0 = 0xFF 
+    xor r6, r0          ; r6 = -(current distance) -- step 1 of two's complement
+    ldi 1               ; r0 = 1
+    add r6, r0          ; r6 = two's comp of current distance
+
+    add r7, r6          ; r7 = r7 - r6
+    lsr r7, 7           ; r7 >> 7 to get the MSB of result
+    mov r0, r7          ; r7 = MSB of result
+    bnz 18              ; if MSB == 1 then r6 > r7, so update the max distance
+    br 19               ; else we finished the process for two values in arr
+
+update_max:
+    mov r0, r5          ; r0 = current distance
+    str r0, 17          ; arr[17] = current distance = new max distance
+
+inner_end:
+    # Now we increment j (r3)
+    ldi 1               ; r0 = 1
+    add r3, r0          ; r3 = j + 1
+    br 12               ; go back to the inner look and check
+
+outer_end:
+    # Now we increment i (r2)
+    ldi 1               ; r0 = 1
+    add r2, r0          ; r2 = i + 1
+    br 10               ; go back to the outer loop and check
+
+halt:
+    br 22               ; PC = 511 (halt condition)
