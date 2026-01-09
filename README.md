@@ -3,7 +3,7 @@
 ### Authors: Talal Jeddawi, Abdulaziz Khader
 
 ## Overview of the ISA
-The ISA follows a load-store architecture. It aims to maximize register-register operations with respect to the 9-bit instruction width limit, and as such, we are pre-defining lookup tables to store recurring constants and branch destinations. A full list of the ISA operations and examples of how they work is found in [this document](./isa_reference.md).
+The ISA follows a load-store architecture. It aims to maximize register-register operations with respect to the 9-bit instruction width limit and the 8-bit data wires, and as such, we are pre-defining lookup tables to store recurring constants and branch destinations. A full list of the ISA operations and examples of how they work is found in [this document](./isa_reference.md).
 
 ## Programs
 This CPU was developed to simulate and synthesize the following programs: 
